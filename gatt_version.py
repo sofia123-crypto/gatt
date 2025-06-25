@@ -90,11 +90,11 @@ if role == "Administrateur":
                 else:
                     jour_str = jour.strftime("%Y-%m-%d")
     
-        if jour_str not in dates_existantes:
-        df_gantt = pd.concat([
-            df_gantt,
-            pd.DataFrame([[jour_str, "00:00", "00:01"]], columns=["date", "heure_debut", "heure_fin"])
-        ])
+                if jour_str not in dates_existantes:
+                    df_gantt = pd.concat([
+                        df_gantt,
+                        pd.DataFrame([[jour_str, "00:00", "00:01"]], columns=["date", "heure_debut", "heure_fin"])
+                    ])
 
 
             df_gantt["Début"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_debut"])

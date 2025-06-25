@@ -77,7 +77,6 @@ if role == "Administrateur":
         if st.session_state.admin_planning:
             import plotly.express as px
             st.markdown("### 📊 Visualisation Gantt")
-            
 
             df_gantt = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin"])
 

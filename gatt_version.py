@@ -85,7 +85,7 @@ if role == "Administrateur":
             dates_existantes = df_gantt['date'].unique() if not df_gantt.empty else []
 
             for jour in jours_semaine:
-                jour_str = str(jour)
+                jour_str = str(jour.date())
                 if jour_str not in dates_existantes:
                     df_gantt = pd.concat([
                         df_gantt,
@@ -173,5 +173,3 @@ elif role == "Utilisateur":
                         st.text(f" - {e}")
         except Exception as e:
             st.error(f"Erreur : {e}")
-
-

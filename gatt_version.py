@@ -84,7 +84,7 @@ if role == "Administrateur":
             jours_semaine = [lundi + timedelta(days=i) for i in range(6)]
             dates_existantes = df_gantt['date'].unique() if not df_gantt.empty else []
 
-           for jour in jours_semaine:
+        for jour in jours_semaine:
                 if isinstance(jour, str):
                     jour_str = jour
                 else:

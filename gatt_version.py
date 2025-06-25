@@ -7,25 +7,19 @@ Original file is located at
     https://colab.research.google.com/drive/1GfeSGwj-FV6VcZ91icWYHq2PnuwoqJBs
 """
 
-
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, time
 
 st.set_page_config(page_title="🛠️ Calcul du Temps de Montage", layout="centered")
 
-
 st.title("Estimation du Temps de Montage")
 
-
-#  Fonction intelligente pour gérer les plages disponibles
-
+# Fonction intelligente pour gérer les plages disponibles
 def trouver_disponibilite(date_jour, h_debut_jour, h_fin_jour, planning, temps_requis):
     debut_jour = datetime.combine(date_jour, h_debut_jour)
     fin_jour = datetime.combine(date_jour, h_fin_jour)
 
-    # Extraire les plages occupées ce jour-là
     taches = []
     for _, row in planning.iterrows():
         if row["date"] == str(date_jour):
@@ -34,7 +28,6 @@ def trouver_disponibilite(date_jour, h_debut_jour, h_fin_jour, planning, temps_r
             taches.append((d, f))
     taches.sort()
 
-    # Construire les plages disponibles
     plages_libres = []
     cursor = debut_jour
     for d, f in taches:
@@ -44,28 +37,25 @@ def trouver_disponibilite(date_jour, h_debut_jour, h_fin_jour, planning, temps_r
     if cursor < fin_jour:
         plages_libres.append((cursor, fin_jour))
 
-    # Chercher une plage libre suffisamment longue
     temps_requis_td = timedelta(minutes=temps_requis)
     for debut, fin in plages_libres:
         duree = fin - debut
         if duree >= temps_requis_td:
-            # ✅ Retourne l'heure réelle de début ET de fin
             h_debut_montage = debut
             h_fin_montage = debut + temps_requis_td
             return f"🟢 Montage possible de {h_debut_montage.strftime('%H:%M')} à {h_fin_montage.strftime('%H:%M')}"
 
     return "❌ Pas assez de créneaux disponibles"
 
-
-# ===  SÉLECTEUR DE RÔLE ===
+# === SÉLECTEUR DE RÔLE ===
 role = st.sidebar.selectbox("👤 Vous êtes :", ["Utilisateur", "Administrateur"])
+
 if role == "Administrateur":
     mdp = st.text_input("🔐 Mot de passe administrateur", type="password")
 
     if mdp == "safran123":
         st.success("Accès administrateur accordé ✅")
 
-        # Choix de la date et des horaires
         date_plan = st.date_input("📅 Date de planification", value=datetime.today())
         h_debut = st.time_input("Début de la journée", time(8, 0))
         h_fin = st.time_input("Fin de la journée", time(17, 0))
@@ -87,7 +77,6 @@ if role == "Administrateur":
         for i, (jour, d, f) in enumerate(st.session_state.admin_planning):
             st.text(f"{i+1}. {jour} | {d} → {f}")
 
-        # 🔷 Diagramme de Gantt ici
         if st.session_state.admin_planning:
             import plotly.express as px
             st.markdown("### 📊 Visualisation Gantt")
@@ -108,12 +97,9 @@ if role == "Administrateur":
     else:
         st.warning("🔒 Accès refusé. Mot de passe incorrect.")
 
-
-# === 🧾 MODE UTILISATEUR ===
 elif role == "Utilisateur":
     st.markdown("Chargez votre fichier de commande client (`commande_client.csv`).")
 
-    # Chargement base Test_1.csv
     try:
         base_df = pd.read_csv("Test_1.csv")
         base_df['temps_montage'] = base_df['temps_montage'].astype(int)
@@ -139,7 +125,6 @@ elif role == "Utilisateur":
             else:
                 erreurs.append(f"Référence inconnue : {ref}")
         return total, erreurs
-
 
     if commande_file:
         try:
@@ -177,3 +162,4 @@ elif role == "Utilisateur":
                         st.text(f" - {e}")
         except Exception as e:
             st.error(f"Erreur : {e}")
+

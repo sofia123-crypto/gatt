@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1GfeSGwj-FV6VcZ91icWYHq2PnuwoqJBs
 """
 
-!pip install plotly --quiet
+
 
 import streamlit as st
 import pandas as pd

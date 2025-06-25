@@ -62,53 +62,53 @@ if role == "Administrateur":
             st.session_state.admin_planning = []
 
         with st.form("form_admin"):
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns([1, 1, 2])
             with col1:
                 tache_debut = st.time_input("Début tâche", time(9, 0), key="start_admin")
             with col2:
                 tache_fin = st.time_input("Fin tâche", time(10, 0), key="end_admin")
+            with col3:
+                tache_nom = st.text_input("📝 Nom de la tâche", key="nom_tache")
+
             add_btn = st.form_submit_button("➕ Ajouter la tâche")
             if add_btn and tache_debut < tache_fin:
                 st.session_state.admin_planning.append(
-                    (str(date_plan), tache_debut.strftime("%H:%M"), tache_fin.strftime("%H:%M"))
+                    (str(date_plan), tache_debut.strftime("%H:%M"), tache_fin.strftime("%H:%M"), tache_nom)
                 )
 
         st.markdown("### 📌 Tâches planifiées :")
-        for i, (jour, d, f) in enumerate(st.session_state.admin_planning):
-            st.text(f"{i+1}. {jour} | {d} → {f}")
+        for i, (jour, d, f, nom) in enumerate(st.session_state.admin_planning):
+            st.text(f"{i+1}. {jour} | {d} → {f} | {nom}")
+
+        col_reset, col_save = st.columns([1, 1])
+        with col_reset:
+            if st.button("🗑️ Réinitialiser le planning"):
+                st.session_state.admin_planning.clear()
+                st.success("Planning réinitialisé ✅")
+        with col_save:
+            if st.button("📂 Sauvegarder le planning"):
+                df = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin", "nom"])
+                df.to_csv("planning_admin.csv", index=False)
+                st.success("Planning sauvegardé avec succès ✅")
 
         if st.session_state.admin_planning:
             import plotly.express as px
             st.markdown("### 📊 Visualisation Gantt")
 
-            df_gantt = pd.DataFrame(
-                st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin"]
-            )
-
-            lundi = date_plan - timedelta(days=date_plan.weekday())
-            jours_semaine = [lundi + timedelta(days=i) for i in range(6)]
-            dates_existantes = df_gantt["date"].unique() if not df_gantt.empty else []
-
-            for jour in jours_semaine:
-                jour_str = jour.strftime("%Y-%m-%d") if not isinstance(jour, str) else jour
-                if jour_str not in dates_existantes:
-                    df_gantt = pd.concat([
-                        df_gantt,
-                        pd.DataFrame([[jour_str, "00:00", "00:01"]], columns=["date", "heure_debut", "heure_fin"])
-                    ])
-
+            df_gantt = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin", "nom"])
             df_gantt["Début"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_debut"])
             df_gantt["Fin"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_fin"])
-            df_gantt["Tâche"] = df_gantt["date"] + " | " + df_gantt["heure_debut"] + " → " + df_gantt["heure_fin"]
+            df_gantt["Tâche"] = df_gantt["nom"]
+
+            lundi = date_plan - timedelta(days=date_plan.weekday())
+            jours_semaine = [(lundi + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6)]
+            df_gantt["date"] = pd.Categorical(df_gantt["date"], categories=jours_semaine, ordered=True)
 
             fig = px.timeline(df_gantt, x_start="Début", x_end="Fin", y="date", color="Tâche", title="Planning Gantt de la semaine")
             fig.update_yaxes(autorange="reversed")
+            fig.update_layout(height=400, margin=dict(l=50, r=50, t=50, b=50))
             st.plotly_chart(fig, use_container_width=True)
 
-        if st.button("📂 Sauvegarder le planning"):
-            df = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin"])
-            df.to_csv("planning_admin.csv", index=False)
-            st.success("Planning sauvegardé avec succès ✅")
     else:
         st.warning("🔒 Accès refusé. Mot de passe incorrect.")
 
@@ -150,7 +150,7 @@ elif role == "Utilisateur":
             try:
                 df_plan = pd.read_csv("planning_admin.csv")
                 for i, row in df_plan.iterrows():
-                    st.text(f"{row['date']} : {row['heure_debut']} → {row['heure_fin']}")
+                    st.text(f"{row['date']} : {row['heure_debut']} → {row['heure_fin']} | {row.get('nom', '')}")
             except:
                 st.info("Aucun planning trouvé.")
                 df_plan = pd.DataFrame(columns=["date", "heure_debut", "heure_fin"])
@@ -177,3 +177,4 @@ elif role == "Utilisateur":
                         st.text(f" - {e}")
         except Exception as e:
             st.error(f"Erreur : {e}")
+

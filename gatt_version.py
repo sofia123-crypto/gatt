@@ -85,12 +85,12 @@ if role == "Administrateur":
             dates_existantes = df_gantt['date'].unique() if not df_gantt.empty else []
 
            for jour in jours_semaine:
-    if isinstance(jour, str):
-        jour_str = jour
-    else:
-        jour_str = jour.strftime("%Y-%m-%d")
+                if isinstance(jour, str):
+                    jour_str = jour
+                else:
+                    jour_str = jour.strftime("%Y-%m-%d")
     
-    if jour_str not in dates_existantes:
+        if jour_str not in dates_existantes:
         df_gantt = pd.concat([
             df_gantt,
             pd.DataFrame([[jour_str, "00:00", "00:01"]], columns=["date", "heure_debut", "heure_fin"])

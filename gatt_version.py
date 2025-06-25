@@ -84,13 +84,18 @@ if role == "Administrateur":
             jours_semaine = [lundi + timedelta(days=i) for i in range(6)]
             dates_existantes = df_gantt['date'].unique() if not df_gantt.empty else []
 
-            for jour in jours_semaine:
-                jour_str = str(jour.date())
-                if jour_str not in dates_existantes:
-                    df_gantt = pd.concat([
-                        df_gantt,
-                        pd.DataFrame([[jour_str, "00:00", "00:01"]], columns=["date", "heure_debut", "heure_fin"])
-                    ])
+           for jour in jours_semaine:
+    if isinstance(jour, str):
+        jour_str = jour
+    else:
+        jour_str = jour.strftime("%Y-%m-%d")
+    
+    if jour_str not in dates_existantes:
+        df_gantt = pd.concat([
+            df_gantt,
+            pd.DataFrame([[jour_str, "00:00", "00:01"]], columns=["date", "heure_debut", "heure_fin"])
+        ])
+
 
             df_gantt["Début"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_debut"])
             df_gantt["Fin"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_fin"])

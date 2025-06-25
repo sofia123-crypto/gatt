@@ -11,8 +11,8 @@ import pandas as pd
 from datetime import datetime, timedelta, time
 
 st.set_page_config(page_title="🛠️ Calcul du Temps de Montage", layout="centered")
-
 st.title("Estimation du Temps de Montage")
+
 
 def trouver_disponibilite(date_jour, h_debut_jour, h_fin_jour, planning, temps_requis):
     debut_jour = datetime.combine(date_jour, h_debut_jour)
@@ -45,6 +45,7 @@ def trouver_disponibilite(date_jour, h_debut_jour, h_fin_jour, planning, temps_r
 
     return "❌ Pas assez de créneaux disponibles"
 
+
 role = st.sidebar.selectbox("👤 Vous êtes :", ["Utilisateur", "Administrateur"])
 
 if role == "Administrateur":
@@ -68,7 +69,9 @@ if role == "Administrateur":
                 tache_fin = st.time_input("Fin tâche", time(10, 0), key="end_admin")
             add_btn = st.form_submit_button("➕ Ajouter la tâche")
             if add_btn and tache_debut < tache_fin:
-                st.session_state.admin_planning.append((str(date_plan), tache_debut.strftime("%H:%M"), tache_fin.strftime("%H:%M")))
+                st.session_state.admin_planning.append(
+                    (str(date_plan), tache_debut.strftime("%H:%M"), tache_fin.strftime("%H:%M"))
+                )
 
         st.markdown("### 📌 Tâches planifiées :")
         for i, (jour, d, f) in enumerate(st.session_state.admin_planning):
@@ -78,24 +81,21 @@ if role == "Administrateur":
             import plotly.express as px
             st.markdown("### 📊 Visualisation Gantt")
 
-            df_gantt = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin"])
+            df_gantt = pd.DataFrame(
+                st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin"]
+            )
 
             lundi = date_plan - timedelta(days=date_plan.weekday())
             jours_semaine = [lundi + timedelta(days=i) for i in range(6)]
-            dates_existantes = df_gantt['date'].unique() if not df_gantt.empty else []
+            dates_existantes = df_gantt["date"].unique() if not df_gantt.empty else []
 
-        for jour in jours_semaine:
-                if isinstance(jour, str):
-                    jour_str = jour
-                else:
-                    jour_str = jour.strftime("%Y-%m-%d")
-    
+            for jour in jours_semaine:
+                jour_str = jour.strftime("%Y-%m-%d") if not isinstance(jour, str) else jour
                 if jour_str not in dates_existantes:
                     df_gantt = pd.concat([
                         df_gantt,
                         pd.DataFrame([[jour_str, "00:00", "00:01"]], columns=["date", "heure_debut", "heure_fin"])
                     ])
-
 
             df_gantt["Début"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_debut"])
             df_gantt["Fin"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_fin"])
@@ -109,7 +109,6 @@ if role == "Administrateur":
             df = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin"])
             df.to_csv("planning_admin.csv", index=False)
             st.success("Planning sauvegardé avec succès ✅")
-
     else:
         st.warning("🔒 Accès refusé. Mot de passe incorrect.")
 
@@ -145,7 +144,7 @@ elif role == "Utilisateur":
     if commande_file:
         try:
             commande_df = pd.read_csv(commande_file)
-            commande_df['quantite'] = commande_df['quantite'].astype(int)
+            commande_df['quantite'] = pd.to_numeric(commande_df['quantite'], errors='coerce').fillna(0).astype(int)
 
             st.markdown("### 🗓️ Planning de l'opérateur (chargé par l'admin)")
             try:

@@ -66,7 +66,15 @@ def afficher_gantt(planning):
         paper_bgcolor="white"
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    with st.container():
+    st.markdown("### 📊 Visualisation Gantt")
+    
+    # Crée une ligne de 3 colonnes : vide - contenu - vide
+    col1, col2, col3 = st.columns([1, 4, 1])
+    
+    with col2:
+        st.plotly_chart(fig, use_container_width=True)
+
 
 def calculer_temps(commande_df, base_df):
     total = 0

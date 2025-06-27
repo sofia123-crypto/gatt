@@ -127,13 +127,23 @@ if role == "Administrateur":
                 # ✅ Nettoyage layout
                 fig.update_layout(
                     height=600,
-                    margin=dict(l=50, r=50, t=50, b=50),
-                    xaxis=dict(tickangle=-45),
+                    width=1000,  # 👈 Plus large
+                    margin=dict(l=100, r=100, t=50, b=50),  # 👈 Marges équilibrées
+                    xaxis=dict(
+                        tickangle=-45,
+                        range=[
+                            df_gantt["Début"].dt.floor("D").min() + pd.Timedelta(hours=8),
+                            df_gantt["Début"].dt.floor("D").max() + pd.Timedelta(hours=18)
+                        ],
+                    ),
+                    plot_bgcolor="white",
+                    paper_bgcolor="white",
                     legend_title_text="Tâche",
-                    hoverlabel=dict(bgcolor="white", font_size=12),
+                    title_x=0.5  # 👈 Centre le titre
                 )
 
-                st.plotly_chart(fig, use_container_width=True)
+
+                st.plotly_chart(fig, use_container_width=False)
 
     else:
         st.warning("🔒 Accès refusé. Mot de passe incorrect.")

@@ -179,7 +179,8 @@ elif role == "Utilisateur":
 
                 st.success(f"🕒 Temps total estimé : {total} minutes")
                 st.info(f"📆 Disponibilité estimée : {dispo}")
-                if erreurs:
+
+            if erreurs:
                     st.warning("⚠️ Problèmes détectés :")
                     for e in erreurs:
                         st.text(f" - {e}")

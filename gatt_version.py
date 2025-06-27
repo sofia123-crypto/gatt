@@ -11,7 +11,8 @@ import pandas as pd
 from datetime import datetime, timedelta, time
 import plotly.express as px
 
-st.set_page_config(page_title="🛠️ Calcul du Temps de Montage", layout="centered")
+st.set_page_config(page_title="🛠️ Calcul du Temps de Montage", layout="wide")
+
 st.title("🔧 Estimation du Temps de Montage")
 
 # --- Fonctions Utilitaires ---
@@ -57,9 +58,14 @@ def afficher_gantt(planning):
         tickformat="%H:%M", dtick=3600000, title="Heure de la journée"
     )
     fig.update_layout(
-        height=600, width=1000, margin=dict(l=80, r=80, t=60, b=60),
-        title_x=0.5, plot_bgcolor="white", paper_bgcolor="white"
+        height=700,
+        autosize=True,
+        margin=dict(l=50, r=50, t=50, b=50),
+        title_x=0.5,
+        plot_bgcolor="white",
+        paper_bgcolor="white"
     )
+
     st.plotly_chart(fig, use_container_width=True)
 
 def calculer_temps(commande_df, base_df):

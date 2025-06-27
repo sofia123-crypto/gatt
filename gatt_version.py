@@ -91,23 +91,43 @@ if role == "Administrateur":
                 df.to_csv("planning_admin.csv", index=False)
                 st.success("Planning sauvegardé avec succès ✅")
 
-        if st.session_state.admin_planning:
-            import plotly.express as px
-            st.markdown("### 📊 Visualisation Gantt")
+            if st.session_state.admin_planning:
+                import plotly.express as px
 
-            df_gantt = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin", "nom"])
-            df_gantt["Début"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_debut"])
-            df_gantt["Fin"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_fin"])
-            df_gantt["Tâche"] = df_gantt["nom"]
+                st.markdown("### 📊 Visualisation Gantt")
 
-            lundi = date_plan - timedelta(days=date_plan.weekday())
-            jours_semaine = [(lundi + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6)]
-            df_gantt["date"] = pd.Categorical(df_gantt["date"], categories=jours_semaine, ordered=True)
+                df_gantt = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin", "nom"])
+                df_gantt["Début"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_debut"])
+                df_gantt["Fin"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_fin"])
+                df_gantt["Jour"] = pd.to_datetime(df_gantt["date"]).dt.strftime("%d/%m (%a)")  # Ex: 27/06 (jeu)
+                df_gantt["Tâche"] = df_gantt["nom"]
 
-            fig = px.timeline(df_gantt, x_start="Début", x_end="Fin", y="date", color="Tâche", title="Planning Gantt de la semaine")
-            fig.update_yaxes(autorange="reversed")
-            fig.update_layout(height=400, margin=dict(l=50, r=50, t=50, b=50))
-            st.plotly_chart(fig, use_container_width=True)
+                # Gantt : axe Y = Jour, axe X = heure
+                fig = px.timeline(
+                    df_gantt,
+                    x_start="Début",
+                    x_end="Fin",
+                    y="Jour",
+                    color="Tâche",
+                    title="🗓️ Planning Gantt (par jour)",
+                    hover_data=["heure_debut", "heure_fin", "Tâche"]
+                )
+
+                fig.update_yaxes(autorange="reversed", title="Jour")
+                fig.update_xaxes(
+                    title="Heure",
+                    tickformat="%H:%M",
+                    dtick=3600000,  # une heure en ms
+                )
+
+                fig.update_layout(
+                    height=500,
+                    margin=dict(l=50, r=50, t=50, b=50),
+                    xaxis=dict(tickangle=-45),
+                    legend_title_text="Tâche",
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
 
     else:
         st.warning("🔒 Accès refusé. Mot de passe incorrect.")

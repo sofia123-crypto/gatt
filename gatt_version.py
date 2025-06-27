@@ -99,32 +99,38 @@ if role == "Administrateur":
                 df_gantt = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin", "nom"])
                 df_gantt["Début"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_debut"])
                 df_gantt["Fin"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_fin"])
-                df_gantt["Jour"] = pd.to_datetime(df_gantt["date"]).dt.strftime("%d/%m (%a)")  # Ex: 27/06 (jeu)
+
+                # 🗓️ Formater la date (axe Y) en format court pour être clair
+                df_gantt["Jour"] = pd.to_datetime(df_gantt["date"]).dt.strftime("%A %d/%m")  # Exemple : "Jeudi 27/06"
                 df_gantt["Tâche"] = df_gantt["nom"]
 
-                # Gantt : axe Y = Jour, axe X = heure
+                # 📊 Créer le Gantt : Axe Y = jour, Axe X = heure
                 fig = px.timeline(
                     df_gantt,
                     x_start="Début",
                     x_end="Fin",
                     y="Jour",
                     color="Tâche",
-                    title="🗓️ Planning Gantt (par jour)",
-                    hover_data=["heure_debut", "heure_fin", "Tâche"]
-                )
+                    title="📅 Planning Gantt par jour",
+                )    
 
+                # ✅ Inverser les jours pour ordre chronologique vertical
                 fig.update_yaxes(autorange="reversed", title="Jour")
+
+                # ✅ Formatter l'axe X pour n'afficher que les heures
                 fig.update_xaxes(
-                    title="Heure",
                     tickformat="%H:%M",
-                    dtick=3600000,  # une heure en ms
+                    title="Heure de la journée",
+                    dtick=3600000  # 1 heure en ms
                 )
 
+                # ✅ Nettoyage layout
                 fig.update_layout(
-                    height=500,
+                    height=600,
                     margin=dict(l=50, r=50, t=50, b=50),
                     xaxis=dict(tickangle=-45),
                     legend_title_text="Tâche",
+                    hoverlabel=dict(bgcolor="white", font_size=12),
                 )
 
                 st.plotly_chart(fig, use_container_width=True)

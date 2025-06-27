@@ -53,27 +53,29 @@ def afficher_gantt(planning):
     fig = px.timeline(
         df_gantt, x_start="Début", x_end="Fin", y="Jour", color="Tâche", title="📅 Planning Gantt par jour"
     )
+
     fig.update_yaxes(autorange="reversed", title="Jour")
     fig.update_xaxes(
-        tickformat="%H:%M", dtick=3600000, title="Heure de la journée"
+        tickformat="%H:%M",
+        dtick=3600000,
+        range=[df_gantt["Début"].min() - pd.Timedelta(hours=1),
+               df_gantt["Fin"].max() + pd.Timedelta(hours=1)],
+        title="Heure de la journée"
     )
     fig.update_layout(
-        height=700,
-        autosize=True,
-        margin=dict(l=50, r=50, t=50, b=50),
+        height=800,
+        title_font_size=22,
+        font=dict(size=14),
+        margin=dict(l=80, r=80, t=80, b=80),
         title_x=0.5,
         plot_bgcolor="white",
         paper_bgcolor="white"
     )
 
-    with st.container():
     st.markdown("### 📊 Visualisation Gantt")
-    
-    # Crée une ligne de 3 colonnes : vide - contenu - vide
-    col1, col2, col3 = st.columns([1, 4, 1])
-    
+    col1, col2, col3 = st.columns([1, 6, 1])
     with col2:
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=False)
 
 
 def calculer_temps(commande_df, base_df):

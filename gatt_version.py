@@ -149,54 +149,63 @@ if role == "Administrateur":
 
 
 elif role == "Utilisateur":
-    commande_file = st.file_uploader("📤 Charger votre commande", type="csv")
-if commande_file:
-    erreurs = []
+    st.info("Veuillez charger votre fichier de commande client (`commande_client.csv`).")
 
     try:
-        commande_df = pd.read_csv(commande_file)
-        commande_df['quantite'] = pd.to_numeric(commande_df['quantite'], errors='coerce').fillna(0).astype(int)
+        base_df = pd.read_csv("Test_1.csv")
+        base_df['temps_montage'] = base_df['temps_montage'].astype(int)
+    except Exception as e:
+        st.error(f"❌ Erreur chargement `Test_1.csv` : {e}")
+        st.stop()
+
+    commande_file = st.file_uploader("📤 Charger votre commande", type="csv")
+    if commande_file:
+        erreurs = []
 
         try:
-            df_plan = pd.read_csv("planning_admin.csv")
-        except:
-            st.warning("⚠️ Aucun planning trouvé.")
-            df_plan = pd.DataFrame(columns=["date", "heure_debut", "heure_fin", "nom"])
+            commande_df = pd.read_csv(commande_file)
+            commande_df['quantite'] = pd.to_numeric(commande_df['quantite'], errors='coerce').fillna(0).astype(int)
 
-        if st.button("▶️ Calculer le temps de montage"):
-            total, erreurs = calculer_temps(commande_df, base_df)
+            try:
+                df_plan = pd.read_csv("planning_admin.csv")
+            except:
+                st.warning("⚠️ Aucun planning trouvé.")
+                df_plan = pd.DataFrame(columns=["date", "heure_debut", "heure_fin", "nom"])
 
-            if df_plan.empty:
-                st.error("❌ Aucun planning disponible.")
-                st.stop()
+            if st.button("▶️ Calculer le temps de montage"):
+                total, erreurs = calculer_temps(commande_df, base_df)
 
-            # 🔁 Chercher la première date disponible dans le planning
-            dates_planning = sorted(df_plan["date"].unique())
-            dispo = "❌ Aucune date avec créneau suffisant trouvée"
-            date_dispo = None
+                if df_plan.empty:
+                    st.error("❌ Aucun planning disponible.")
+                    st.stop()
 
-            for d in dates_planning:
-                d_obj = pd.to_datetime(d).date()
-                dispo_test = trouver_disponibilite(d_obj, time(8, 0), time(17, 0), df_plan, total)
-                if dispo_test.startswith("🟢"):
-                    dispo = dispo_test
-                    date_dispo = d
-                    break
+                # 🔁 Chercher la première date disponible dans le planning
+                dates_planning = sorted(df_plan["date"].unique())
+                dispo = "❌ Aucune date avec créneau suffisant trouvée"
+                date_dispo = None
 
-            st.success(f"🕒 Temps total estimé : {total} minutes")
-            if date_dispo:
-                st.info(f"📆 Disponibilité estimée le **{date_dispo}** → {dispo}")
-            else:
-                st.warning(dispo)
+                for d in dates_planning:
+                    d_obj = pd.to_datetime(d).date()
+                    dispo_test = trouver_disponibilite(d_obj, time(8, 0), time(17, 0), df_plan, total)
+                    if dispo_test.startswith("🟢"):
+                        dispo = dispo_test
+                        date_dispo = d
+                        break
 
-            if erreurs:
-                st.warning("⚠️ Problèmes détectés :")
-                for e in erreurs:
-                    st.text(f" - {e}")
+                st.success(f"🕒 Temps total estimé : {total} minutes")
+                if date_dispo:
+                    st.info(f"📆 Disponibilité estimée le **{date_dispo}** → {dispo}")
+                else:
+                    st.warning(dispo)
 
-            # 📊 Affichage du planning Gantt à la demande
-            with st.expander("📊 Voir le planning Gantt", expanded=False):
-                afficher_gantt(df_plan.values.tolist())
+                if erreurs:
+                    st.warning("⚠️ Problèmes détectés :")
+                    for e in erreurs:
+                        st.text(f" - {e}")
 
-    except Exception as e:
-        st.error(f"❌ Erreur traitement fichier : {e}")
+                # 📊 Affichage du planning Gantt à la demande
+                with st.expander("📊 Voir le planning Gantt", expanded=False):
+                    afficher_gantt(df_plan.values.tolist())
+
+        except Exception as e:
+            st.error(f"❌ Erreur traitement fichier : {e}")

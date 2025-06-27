@@ -9,21 +9,23 @@ Original file is located at
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, time
+import plotly.express as px
 
 st.set_page_config(page_title="🛠️ Calcul du Temps de Montage", layout="centered")
-st.title("Estimation du Temps de Montage")
+st.title("🔧 Estimation du Temps de Montage")
 
+# --- Fonctions Utilitaires ---
 
 def trouver_disponibilite(date_jour, h_debut_jour, h_fin_jour, planning, temps_requis):
     debut_jour = datetime.combine(date_jour, h_debut_jour)
     fin_jour = datetime.combine(date_jour, h_fin_jour)
+    temps_requis_td = timedelta(minutes=temps_requis)
 
-    taches = []
-    for _, row in planning.iterrows():
-        if row["date"] == str(date_jour):
-            d = datetime.combine(date_jour, datetime.strptime(row["heure_debut"], "%H:%M").time())
-            f = datetime.combine(date_jour, datetime.strptime(row["heure_fin"], "%H:%M").time())
-            taches.append((d, f))
+    taches = [
+        (datetime.combine(date_jour, datetime.strptime(row["heure_debut"], "%H:%M").time()),
+         datetime.combine(date_jour, datetime.strptime(row["heure_fin"], "%H:%M").time()))
+        for _, row in planning.iterrows() if row["date"] == str(date_jour)
+    ]
     taches.sort()
 
     plages_libres = []
@@ -35,182 +37,133 @@ def trouver_disponibilite(date_jour, h_debut_jour, h_fin_jour, planning, temps_r
     if cursor < fin_jour:
         plages_libres.append((cursor, fin_jour))
 
-    temps_requis_td = timedelta(minutes=temps_requis)
     for debut, fin in plages_libres:
-        duree = fin - debut
-        if duree >= temps_requis_td:
-            h_debut_montage = debut
-            h_fin_montage = debut + temps_requis_td
-            return f"🟢 Montage possible de {h_debut_montage.strftime('%H:%M')} à {h_fin_montage.strftime('%H:%M')}"
-
+        if fin - debut >= temps_requis_td:
+            return f"🟢 Montage possible de {debut.strftime('%H:%M')} à {(debut + temps_requis_td).strftime('%H:%M')}"
     return "❌ Pas assez de créneaux disponibles"
 
+def afficher_gantt(planning):
+    df_gantt = pd.DataFrame(planning, columns=["date", "heure_debut", "heure_fin", "nom"])
+    df_gantt["Début"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_debut"])
+    df_gantt["Fin"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_fin"])
+    df_gantt["Jour"] = pd.to_datetime(df_gantt["date"]).dt.strftime("%A %d/%m")
+    df_gantt["Tâche"] = df_gantt["nom"]
 
-role = st.sidebar.selectbox("👤 Vous êtes :", ["Utilisateur", "Administrateur"])
+    fig = px.timeline(
+        df_gantt, x_start="Début", x_end="Fin", y="Jour", color="Tâche", title="📅 Planning Gantt par jour"
+    )
+    fig.update_yaxes(autorange="reversed", title="Jour")
+    fig.update_xaxes(
+        tickformat="%H:%M", dtick=3600000, title="Heure de la journée"
+    )
+    fig.update_layout(
+        height=600, width=1000, margin=dict(l=80, r=80, t=60, b=60),
+        title_x=0.5, plot_bgcolor="white", paper_bgcolor="white"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+def calculer_temps(commande_df, base_df):
+    total = 0
+    erreurs = []
+    for _, ligne in commande_df.iterrows():
+        ref = ligne['reference']
+        qte = ligne['quantite']
+        ligne_base = base_df[base_df['reference'] == ref]
+        if not ligne_base.empty:
+            try:
+                temps = int(ligne_base.iloc[0]['temps_montage'])
+                total += temps * qte
+            except:
+                erreurs.append(f"Erreur de conversion pour : {ref}")
+        else:
+            erreurs.append(f"Référence inconnue : {ref}")
+    return total, erreurs
+
+# --- Interface principale ---
+
+role = st.sidebar.radio("👤 Choisissez votre rôle :", ["Utilisateur", "Administrateur"])
 
 if role == "Administrateur":
-    mdp = st.text_input("🔐 Mot de passe administrateur", type="password")
+    mdp = st.text_input("🔐 Entrez le mot de passe :", type="password")
+    if mdp != "safran123":
+        st.warning("Mot de passe incorrect.")
+        st.stop()
 
-    if mdp == "safran123":
-        st.success("Accès administrateur accordé ✅")
+    st.success("✅ Accès administrateur accordé")
 
-        date_plan = st.date_input("📅 Date de planification", value=datetime.today())
-        h_debut = st.time_input("Début de la journée", time(8, 0))
-        h_fin = st.time_input("Fin de la journée", time(17, 0))
+    date_plan = st.date_input("📅 Date", value=datetime.today())
+    h_debut, h_fin = st.columns(2)
+    heure_debut = h_debut.time_input("Début de journée", time(8, 0))
+    heure_fin = h_fin.time_input("Fin de journée", time(17, 0))
 
-        if "admin_planning" not in st.session_state:
-            st.session_state.admin_planning = []
+    if "admin_planning" not in st.session_state:
+        st.session_state.admin_planning = []
 
-        with st.form("form_admin"):
-            col1, col2, col3 = st.columns([1, 1, 2])
-            with col1:
-                tache_debut = st.time_input("Début tâche", time(9, 0), key="start_admin")
-            with col2:
-                tache_fin = st.time_input("Fin tâche", time(10, 0), key="end_admin")
-            with col3:
-                tache_nom = st.text_input("📝 Nom de la tâche", key="nom_tache")
+    with st.form("form_admin"):
+        col1, col2, col3 = st.columns([1, 1, 2])
+        tache_debut = col1.time_input("Heure début", time(9, 0))
+        tache_fin = col2.time_input("Heure fin", time(10, 0))
+        tache_nom = col3.text_input("Nom de la tâche")
 
-            add_btn = st.form_submit_button("➕ Ajouter la tâche")
-            if add_btn and tache_debut < tache_fin:
+        if st.form_submit_button("➕ Ajouter"):
+            if tache_debut < tache_fin and tache_nom:
                 st.session_state.admin_planning.append(
                     (str(date_plan), tache_debut.strftime("%H:%M"), tache_fin.strftime("%H:%M"), tache_nom)
                 )
+                st.success("Tâche ajoutée.")
+            else:
+                st.error("⚠️ Vérifiez les heures et le nom de la tâche.")
 
-        st.markdown("### 📌 Tâches planifiées :")
+    if st.session_state.admin_planning:
+        st.markdown("### 📋 Tâches ajoutées :")
         for i, (jour, d, f, nom) in enumerate(st.session_state.admin_planning):
             st.text(f"{i+1}. {jour} | {d} → {f} | {nom}")
 
-        col_reset, col_save = st.columns([1, 1])
-        with col_reset:
-            if st.button("🗑️ Réinitialiser le planning"):
-                st.session_state.admin_planning.clear()
-                st.success("Planning réinitialisé ✅")
-        with col_save:
-            if st.button("📂 Sauvegarder le planning"):
-                df = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin", "nom"])
-                df.to_csv("planning_admin.csv", index=False)
-                st.success("Planning sauvegardé avec succès ✅")
+        col_reset, col_save = st.columns(2)
+        if col_reset.button("🗑️ Réinitialiser"):
+            st.session_state.admin_planning.clear()
+        if col_save.button("💾 Sauvegarder"):
+            pd.DataFrame(st.session_state.admin_planning,
+                         columns=["date", "heure_debut", "heure_fin", "nom"]).to_csv("planning_admin.csv", index=False)
+            st.success("Planning sauvegardé.")
 
-            if st.session_state.admin_planning:
-                import plotly.express as px
-
-                st.markdown("### 📊 Visualisation Gantt")
-
-                df_gantt = pd.DataFrame(st.session_state.admin_planning, columns=["date", "heure_debut", "heure_fin", "nom"])
-                df_gantt["Début"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_debut"])
-                df_gantt["Fin"] = pd.to_datetime(df_gantt["date"] + " " + df_gantt["heure_fin"])
-
-                # 🗓️ Formater la date (axe Y) en format court pour être clair
-                df_gantt["Jour"] = pd.to_datetime(df_gantt["date"]).dt.strftime("%A %d/%m")  # Exemple : "Jeudi 27/06"
-                df_gantt["Tâche"] = df_gantt["nom"]
-
-                # 📊 Créer le Gantt : Axe Y = jour, Axe X = heure
-                fig = px.timeline(
-                    df_gantt,
-                    x_start="Début",
-                    x_end="Fin",
-                    y="Jour",
-                    color="Tâche",
-                    title="📅 Planning Gantt par jour",
-                )    
-
-                # ✅ Inverser les jours pour ordre chronologique vertical
-                fig.update_yaxes(autorange="reversed", title="Jour")
-
-                # ✅ Formatter l'axe X pour n'afficher que les heures
-                fig.update_xaxes(
-                    tickformat="%H:%M",
-                    title="Heure de la journée",
-                    dtick=3600000  # 1 heure en ms
-                )
-
-                # ✅ Nettoyage layout
-                fig.update_layout(
-                    height=600,
-                    width=1000,  # 👈 Plus large
-                    margin=dict(l=100, r=100, t=50, b=50),  # 👈 Marges équilibrées
-                    xaxis=dict(
-                        tickangle=-45,
-                        range=[
-                            df_gantt["Début"].dt.floor("D").min() + pd.Timedelta(hours=8),
-                            df_gantt["Début"].dt.floor("D").max() + pd.Timedelta(hours=18)
-                        ],
-                    ),
-                    plot_bgcolor="white",
-                    paper_bgcolor="white",
-                    legend_title_text="Tâche",
-                    title_x=0.5  # 👈 Centre le titre
-                )
-
-
-                st.plotly_chart(fig, use_container_width=False)
-
-    else:
-        st.warning("🔒 Accès refusé. Mot de passe incorrect.")
+        st.markdown("### 📊 Visualisation Gantt")
+        afficher_gantt(st.session_state.admin_planning)
 
 elif role == "Utilisateur":
-    st.markdown("Chargez votre fichier de commande client (`commande_client.csv`).")
-
+    st.info("Veuillez charger votre fichier de commande client (`commande_client.csv`).")
     try:
         base_df = pd.read_csv("Test_1.csv")
         base_df['temps_montage'] = base_df['temps_montage'].astype(int)
     except Exception as e:
-        st.error(f"❌ Impossible de charger Test_1.csv : {e}")
+        st.error(f"❌ Erreur chargement `Test_1.csv` : {e}")
         st.stop()
 
-    commande_file = st.file_uploader("📌 Charger votre commande (commande_client.csv)", type="csv")
-
-    def calculer_temps(commande_df, base_df):
-        total = 0
-        erreurs = []
-        for _, ligne in commande_df.iterrows():
-            ref = ligne['reference']
-            qte = ligne['quantite']
-            ligne_base = base_df[base_df['reference'] == ref]
-            if not ligne_base.empty:
-                try:
-                    temps = int(ligne_base.iloc[0]['temps_montage'])
-                    total += temps * qte
-                except:
-                    erreurs.append(f"Erreur conversion pour : {ref}")
-            else:
-                erreurs.append(f"Référence inconnue : {ref}")
-        return total, erreurs
-
+    commande_file = st.file_uploader("📤 Charger votre commande", type="csv")
     if commande_file:
         try:
             commande_df = pd.read_csv(commande_file)
             commande_df['quantite'] = pd.to_numeric(commande_df['quantite'], errors='coerce').fillna(0).astype(int)
 
-            st.markdown("### 🗓️ Planning de l'opérateur (chargé par l'admin)")
+            st.markdown("### 🧭 Planning chargé :")
             try:
                 df_plan = pd.read_csv("planning_admin.csv")
-                for i, row in df_plan.iterrows():
+                for _, row in df_plan.iterrows():
                     st.text(f"{row['date']} : {row['heure_debut']} → {row['heure_fin']} | {row.get('nom', '')}")
             except:
-                st.info("Aucun planning trouvé.")
+                st.warning("Aucun planning trouvé.")
                 df_plan = pd.DataFrame(columns=["date", "heure_debut", "heure_fin"])
 
-            if st.button("▶️ Lancer le calcul du temps de montage"):
+            if st.button("▶️ Calculer le temps de montage"):
                 total, erreurs = calculer_temps(commande_df, base_df)
+                date_jour = pd.to_datetime(df_plan.iloc[0]["date"]).date() if not df_plan.empty else datetime.today().date()
+                dispo = trouver_disponibilite(date_jour, time(8, 0), time(17, 0), df_plan, total)
 
-                if not df_plan.empty:
-                    date_jour = pd.to_datetime(df_plan.iloc[0]["date"]).date()
-                else:
-                    date_jour = datetime.today().date()
-
-                heure_debut_journee = time(8, 0)
-                heure_fin_journee = time(17, 0)
-
-                date_dispo = trouver_disponibilite(date_jour, heure_debut_journee, heure_fin_journee, df_plan, total)
-
-                st.success(f"✅ Temps total : {total} minutes")
-                st.info(f"📅 Date estimée de disponibilité : {date_dispo}")
-
+                st.success(f"🕒 Temps total estimé : {total} minutes")
+                st.info(f"📆 Disponibilité estimée : {dispo}")
                 if erreurs:
-                    st.warning("⚠️ Problèmes :")
+                    st.warning("⚠️ Problèmes détectés :")
                     for e in erreurs:
                         st.text(f" - {e}")
         except Exception as e:
-            st.error(f"Erreur : {e}")
-
+            st.error(f"❌ Erreur traitement fichier : {e}")

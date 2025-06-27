@@ -140,11 +140,13 @@ if role == "Administrateur":
             st.session_state.admin_planning.clear()
         if col_save.button("💾 Sauvegarder"):
             pd.DataFrame(st.session_state.admin_planning,
-                         columns=["date", "heure_debut", "heure_fin", "nom"]).to_csv("planning_admin.csv", index=False)
+                 columns=["date", "heure_debut", "heure_fin", "nom"]).to_csv("planning_admin.csv", index=False)
             st.success("Planning sauvegardé.")
 
-        st.markdown("### 📊 Visualisation Gantt")
-        afficher_gantt(st.session_state.admin_planning)
+# 🔽 Affichage Gantt rétractable
+        with st.expander("📊 Cliquer pour voir le Planning Gantt", expanded=False):
+            afficher_gantt(st.session_state.admin_planning)
+
 
 elif role == "Utilisateur":
     st.info("Veuillez charger votre fichier de commande client (`commande_client.csv`).")
